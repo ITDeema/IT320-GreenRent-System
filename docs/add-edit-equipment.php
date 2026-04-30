@@ -761,8 +761,8 @@ $isEditMode = !empty($editData["equipment_id"]);
     </a>
 
     <ul class="gr-navlinks">
-      <li><a href="owner-dashboard.php" class="active">Owner Dashboard</a></li>
-      <li><a href="add-edit-equipment.php">Manage Equipment</a></li>
+      <li><a href="owner-dashboard.php" >Owner Dashboard</a></li>
+      <li><a href="add-edit-equipment.php" class="active">Manage Equipment</a></li>
       <li><a href="view-reservations.php">Reservations</a></li>
       <li><a href="owner-profile.php">My Profile</a></li>
     </ul>

@@ -11,6 +11,19 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'owner') {
 $user = $_SESSION['user'];
 $uid  = $user['user_id'];
 
+// ── Delete equipment handler ──────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete_equipment') {
+    $del_id = (int)$_POST['equipment_id'];
+    $stmt = $conn->prepare("DELETE FROM equipment WHERE equipment_id = ? AND owner_id = ?");
+    $stmt->bind_param("ii", $del_id, $uid);
+    $stmt->execute();
+    if ($stmt->affected_rows > 0) {
+        $_SESSION['flash_message'] = ['type' => 'success', 'text' => 'Equipment deleted successfully.'];
+    }
+    header("Location: owner-dashboard.php");
+    exit;
+}
+
 // استخراج الحروف الأولى لاسم المستخدم لعرضها في الـ Avatar
 $initials = strtoupper(mb_substr($user['first_name'], 0, 1) . mb_substr($user['last_name'], 0, 1));
 $short_name = htmlspecialchars($user['first_name'] . ' ' . mb_substr($user['last_name'], 0, 1) . '.');
@@ -170,6 +183,23 @@ $latest_reservations = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
     .empty-note { padding: 18px 22px 22px; font-size: 13px; color: var(--text-muted); line-height: 1.7; text-align: center; }
 
+    /* ── Delete Modal ── */
+    .del-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 999; display: none; align-items: center; justify-content: center; }
+    .del-overlay.active { display: flex; }
+    .del-modal { background: var(--white); border-radius: 18px; padding: 32px 28px; max-width: 420px; width: 90%; box-shadow: 0 8px 40px rgba(0,0,0,.18); text-align: center; }
+    .del-modal h3 { font-family: 'DM Serif Display', serif; font-size: 22px; color: var(--green-deep); margin-bottom: 12px; }
+    .del-modal p { font-size: 14px; color: var(--text-muted); line-height: 1.7; margin-bottom: 24px; }
+    .del-modal-actions { display: flex; gap: 12px; justify-content: center; }
+    .btn-cancel-del { background: transparent; border: 1.5px solid #cbd5e1; color: #475569; padding: 10px 22px; border-radius: 10px; font-weight: 600; font-size: 13.5px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: .2s; }
+    .btn-cancel-del:hover { background: #f1f5f9; }
+    .btn-confirm-del { background: #dc2626; color: #fff; border: none; padding: 10px 22px; border-radius: 10px; font-weight: 600; font-size: 13.5px; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: .2s; }
+    .btn-confirm-del:hover { background: #b91c1c; }
+    .status-actions { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+    .btn-delete-equip { padding: 5px 12px; border-radius: 10px; border: 1px solid #f3a6a6; background: #fff; color: #d64545; font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .2s ease; }
+    .btn-delete-equip:hover { background: #fff1f1; border-color: #e85c5c; color: #b91c1c; }
+    .flash-msg { border-radius: 12px; padding: 14px 20px; margin-bottom: 20px; font-size: 14px; font-weight: 600; }
+    .flash-success { background: #ecfdf3; color: #15803d; border: 1px solid #bbf7d0; }
+
     @media (max-width: 1000px) { .dashboard-grid { grid-template-columns: repeat(2, 1fr); } .action-grid, .content-grid { grid-template-columns: 1fr; } .owner-hero { flex-direction: column; align-items: flex-start; } .gr-navlinks {display:none;} }
     @media (max-width: 640px) { .owner-page { padding: 24px 16px 0; } .dashboard-grid, .action-grid { grid-template-columns: 1fr; } .equipment-item, .reservation-item { flex-direction: column; align-items: flex-start; } .item-right { text-align: left; } .owner-hero { padding: 24px 20px; } }
 
@@ -219,6 +249,9 @@ $latest_reservations = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
   </header>
 
   <main class="owner-page">
+    <?php if (!empty($_SESSION['flash_message'])): $flash = $_SESSION['flash_message']; unset($_SESSION['flash_message']); ?>
+    <div class="flash-msg flash-<?= htmlspecialchars($flash['type']) ?>"><?= htmlspecialchars($flash['text']) ?></div>
+    <?php endif; ?>
     <section class="owner-hero">
       <div class="owner-hero-text">
         <div class="owner-badge">
@@ -332,7 +365,10 @@ $latest_reservations = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
               </div>
               <div class="item-right">
                 <div class="price-tag"><?= number_format($eq['price_per_day'], 0) ?> SAR / day</div>
-                <span class="mini-status status-<?= strtolower($eq['availability_status']) ?>"><?= ucfirst($eq['availability_status']) ?></span>
+                <div class="status-actions">
+                  <span class="mini-status status-<?= strtolower($eq['availability_status']) ?>"><?= ucfirst($eq['availability_status']) ?></span>
+                  <button class="btn-delete-equip" data-id="<?= (int)$eq['equipment_id'] ?>">Delete</button>
+                </div>
               </div>
             </div>
             <?php endforeach; ?>
@@ -418,6 +454,48 @@ $latest_reservations = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
       </div>
     </div>
   </footer>
+
+
+  <div class="del-overlay" id="delOverlay">
+    <div class="del-modal">
+      <h3>Delete Equipment</h3>
+      <p>Are you sure you want to delete this equipment?<br>This action cannot be undone.</p>
+      <div class="del-modal-actions">
+        <button class="btn-cancel-del" id="delCancel">Cancel</button>
+        <button class="btn-confirm-del" id="delConfirm">Confirm Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <form id="delForm" method="POST" action="owner-dashboard.php" style="display:none">
+    <input type="hidden" name="action" value="delete_equipment">
+    <input type="hidden" name="equipment_id" id="delEquipId" value="">
+  </form>
+
+  <script>
+    const delOverlay  = document.getElementById('delOverlay');
+    const delEquipId  = document.getElementById('delEquipId');
+    const delForm     = document.getElementById('delForm');
+
+    document.querySelectorAll('.btn-delete-equip').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        delEquipId.value = this.dataset.id;
+        delOverlay.classList.add('active');
+      });
+    });
+
+    document.getElementById('delCancel').addEventListener('click', function() {
+      delOverlay.classList.remove('active');
+    });
+
+    delOverlay.addEventListener('click', function(e) {
+      if (e.target === delOverlay) delOverlay.classList.remove('active');
+    });
+
+    document.getElementById('delConfirm').addEventListener('click', function() {
+      delForm.submit();
+    });
+  </script>
 
 </body>
 </html>
