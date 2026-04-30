@@ -730,8 +730,30 @@ $operatorText = $eq['operator_included'] ? 'Operator Included' : 'No Operator';
 
   // ── Card number formatting ──
   document.getElementById('cardNumber').addEventListener('input', function(e) {
-    let v = e.target.value.replace(/\D/g,'').substring(0,16);
-    e.target.value = v.replace(/(.{4})/g,'$1  ').trim();
+    const input = e.target;
+    const cursorPos = input.selectionStart;
+    const oldVal = input.value;
+
+    // Strip non-digits, cap at 16
+    let digits = oldVal.replace(/\D/g, '').substring(0, 16);
+
+    // Format as groups of 4 separated by a single space
+    let formatted = digits.replace(/(.{4})(?=.)/g, '$1 ');
+
+    // Count how many spaces were before the cursor in the old value
+    const beforeCursor = oldVal.substring(0, cursorPos);
+    const digitsBeforeCursor = beforeCursor.replace(/\D/g, '').length;
+
+    // Map digit count back to position in formatted string
+    let newCursor = 0, count = 0;
+    for (let i = 0; i < formatted.length; i++) {
+      if (count === digitsBeforeCursor) { newCursor = i; break; }
+      if (formatted[i] !== ' ') count++;
+      newCursor = i + 1;
+    }
+
+    input.value = formatted;
+    input.setSelectionRange(newCursor, newCursor);
   });
 
   // ── Expiry formatting ──
