@@ -219,8 +219,12 @@ function starsHtml($rating) {
     }
     .equipment-info { display:flex; align-items:center; gap:16px; min-width:0; }
     .equipment-icon {
-      width:58px; height:58px; border-radius:16px; background:var(--green-pale);
+      width:80px; height:80px; border-radius:16px; background:var(--green-pale);
       display:flex; align-items:center; justify-content:center; font-size:28px; flex-shrink:0;
+      overflow:hidden;
+    }
+    .equipment-icon img {
+      width:100%; height:100%; object-fit:cover; border-radius:16px;
     }
     .equipment-text h3 { font-size:22px; color:var(--green-deep); margin-bottom:6px; font-family:'DM Serif Display',serif; }
     .equipment-text p { font-size:13.5px; color:var(--text-muted); line-height:1.7; }
@@ -423,7 +427,15 @@ function starsHtml($rating) {
 
               <!-- Equipment Info -->
               <div class="equipment-info">
-                <div class="equipment-icon"><?= equipmentIcon($r['type']) ?></div>
+                <div class="equipment-icon">
+                  <?php if (!empty($r['image_url'])): ?>
+                    <img src="<?= htmlspecialchars($r['image_url']) ?>"
+                         alt="<?= htmlspecialchars($r['equipment_name']) ?>"
+                         onerror="this.style.display='none';this.parentElement.innerHTML='<?= equipmentIcon($r['type']) ?>'"/>
+                  <?php else: ?>
+                    <?= equipmentIcon($r['type']) ?>
+                  <?php endif; ?>
+                </div>
                 <div class="equipment-text">
                   <h3><?= htmlspecialchars($r['equipment_name']) ?></h3>
                   <p>

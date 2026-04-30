@@ -2,7 +2,6 @@
 session_start();
 require_once 'db.php';
 
-// التحقق من تسجيل الدخول (مثل الداشبورد)
 if (!isset($_SESSION['user'])) {
     header("Location: login.php");
     exit;
@@ -11,11 +10,9 @@ $user = $_SESSION['user'];
 $user_initials = strtoupper(mb_substr($user['first_name'], 0, 1) . mb_substr($user['last_name'], 0, 1));
 $user_short_name = htmlspecialchars($user['first_name'] . ' ' . mb_substr($user['last_name'], 0, 1) . '.');
 
-// جلب رقم المعدة من الرابط
 $equipment_id = isset($_GET['id']) ? (int)$_GET['id'] : 1;
 
 try {
-    // 1. جلب بيانات المعدة وصاحبها
     $stmt = $conn->prepare("
         SELECT e.*, u.first_name AS owner_first, u.last_name AS owner_last 
         FROM equipment e 
@@ -27,10 +24,10 @@ try {
     $equipment = $stmt->get_result()->fetch_assoc();
 
     if (!$equipment) {
-        die("المعدة غير موجودة أو تم حذفها.");
+        die("It`s either not found or deleted.");
     }
 
-    // 2. جلب التقييمات الخاصة بهذه المعدة
+
     $rev_stmt = $conn->prepare("
         SELECT r.*, u.first_name AS renter_first, u.last_name AS renter_last 
         FROM reviews r 
@@ -43,10 +40,9 @@ try {
     $reviews = $rev_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 
 } catch (Exception $e) {
-    die("خطأ في قاعدة البيانات: " . $e->getMessage());
+    die("Database error: " . $e->getMessage());
 }
 
-// 3. حسابات وتقييمات
 $total_reviews = count($reviews);
 $avg_rating = 0;
 $rating_counts = [5 => 0, 4 => 0, 3 => 0, 2 => 0, 1 => 0];
@@ -63,7 +59,6 @@ if ($total_reviews > 0) {
 $owner_initials = strtoupper(mb_substr($equipment['owner_first'], 0, 1) . mb_substr($equipment['owner_last'], 0, 1));
 $price = (float)$equipment['price_per_day'];
 
-// 4. إصلاح مسار الصورة — يجرب كل الاحتمالات
 $img_path = $equipment['image_url'] ?? '';
 $img_src = '';
 if (!empty($img_path)) {
@@ -285,7 +280,7 @@ if (!empty($img_path)) {
   <div class="detail-layout">
     <div class="detail-main">
 
-      <!-- ── GALLERY مع إصلاح الصورة ── -->
+      <!-- ── GALLERY ── -->
       <div class="detail-gallery">
         <?php if ($img_src): ?>
           <img src="<?= htmlspecialchars($img_src) ?>" alt="<?= htmlspecialchars($equipment['equipment_name']) ?>">
